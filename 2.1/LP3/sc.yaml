@@ -1,0 +1,105 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: manual
+provisioner: kubernetes.io/no-provisioner
+volumeBindingMode: Immediate
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: local-pv
+  labels:
+    type: local
+spec:
+  capacity:
+    storage: 1Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: manual
+  local:
+    path: /mnt/data
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - k8s
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: local-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  volumeMode: Filesystem
+  resources:
+    requests:
+      storage: 500Mi
+  storageClassName: manual
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: data-exchange-pv
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: data-exchange-pv
+  template:
+    metadata:
+      labels:
+        app: data-exchange-pv
+    spec:
+      containers:
+      # Контейнер busybox - записывает данные
+      - name: busybox
+        image: busybox:1.36
+        command: 
+        - /bin/sh
+        - -c
+        args:
+        - |
+          echo "Starting busybox writer..."
+          while true; do
+            echo "$(date): Data from busybox container" > /shared/data.txt
+            echo "Written to /shared/data.txt at $(date)"
+            sleep 5
+          done
+        volumeMounts:
+        - name: persistent-storage
+          mountPath: /shared
+      
+      # Контейнер multitool - читает данные
+      - name: multitool
+        image: wbitt/network-multitool:latest
+        command: 
+        - /bin/sh
+        - -c
+        args:
+        - |
+          echo "Starting multitool reader..."
+          while true; do
+            if [ -f /shared/data.txt ]; then
+              echo "=== MULTITOOL READING FROM PV ==="
+              cat /shared/data.txt
+              echo "=================================="
+            else
+              echo "Waiting for data file..."
+            fi
+            sleep 3
+          done
+        volumeMounts:
+        - name: persistent-storage
+          mountPath: /shared
+      
+      volumes:
+      - name: persistent-storage
+        persistentVolumeClaim:
+          claimName: local-pvc

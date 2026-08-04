@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: data-exchange
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: data-exchange
+  template:
+    metadata:
+      labels:
+        app: data-exchange
+    spec:
+      containers:
+      # 1. Контейнер busybox - записывает данные каждые 5 секунд
+      - name: busybox
+        image: busybox:latest
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            while true; do
+              echo "$(date): Data from busybox container" > /shared/data.txt
+              sleep 5
+            done
+        volumeMounts:
+        - name: shared-storage
+          mountPath: /shared
+      
+      # 2. Контейнер multitool - читает данные из файла
+      - name: multitool
+        image: wbitt/network-multitool:latest
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            while true; do
+              if [ -f /shared/data.txt ]; then
+                echo "=== MULTITOOL READING ==="
+                cat /shared/data.txt
+                echo "=========================="
+              else
+                echo "Waiting for data file..."
+              fi
+              sleep 3
+            done
+        volumeMounts:
+        - name: shared-storage
+          mountPath: /shared
+      
+      # 3. Общее хранилище для обоих контейнеров
+      volumes:
+      - name: shared-storage
+        emptyDir: {}
