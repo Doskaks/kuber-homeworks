@@ -1,0 +1,55 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: web-content
+  namespace: default
+data:
+  index.html: |
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+      <title>Страница из ConfigMap</title>
+      <style>
+        body {
+          font-family: Arial, sans-serif;
+          max-width: 800px;
+          margin: 50px auto;
+          padding: 20px;
+          background-color: #f0f8ff;
+          border-radius: 10px;
+          box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+          color: #2c3e50;
+          text-align: center;
+        }
+        .info {
+          background-color: #e8f4fd;
+          padding: 15px;
+          border-radius: 5px;
+          margin-top: 20px;
+        }
+        .timestamp {
+          color: #7f8c8d;
+          text-align: center;
+          font-size: 14px;
+          margin-top: 30px;
+        }
+      </style>
+    </head>
+    <body>
+      <h1>🌐 Привет от Kubernetes!</h1>
+      <div class="info">
+        <p><strong>Страница загружена из ConfigMap</strong></p>
+        <p>Имя: <strong>web-content</strong></p>
+        <p>Подача: <strong>nginx + multitool</strong></p>
+      </div>
+      <div class="timestamp" id="timestamp"></div>
+      
+      <script>
+        document.getElementById('timestamp').textContent = 'Страница загружена: ' + new Date().toLocaleString();
+      </script>
+    </body>
+    </html>
